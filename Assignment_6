@@ -1,0 +1,77 @@
+import java.util.*;
+
+public class KnapsackVisualization {
+
+    public static class Result {
+        int maxValue;
+        List<Integer> chosenItems;
+
+        Result(int maxValue, List<Integer> chosenItems) {
+            this.maxValue = maxValue;
+            this.chosenItems = chosenItems;
+        }
+    }
+
+    public static Result knapsack(int[] weights, int[] values, int W, int[] priorities) {
+        int n = weights.length;
+        int[][] dp = new int[n + 1][W + 1];
+
+        for (int i = 1; i <= n; i++) {
+            for (int w = 1; w <= W; w++) {
+                int effectiveValue = values[i - 1];
+                if (priorities != null && priorities.length > 0) {
+                    effectiveValue += priorities[i - 1] * 1000; // boost perishable
+                }
+
+                if (weights[i - 1] <= w) {
+                    dp[i][w] = Math.max(dp[i - 1][w], dp[i - 1][w - weights[i - 1]] + effectiveValue);
+                } else {
+                    dp[i][w] = dp[i - 1][w];
+                }
+            }
+
+            // ---- VISUALIZATION ----
+            System.out.println("\nDP Table after item " + i
+                    + " (weight=" + weights[i - 1]
+                    + ", value=" + values[i - 1]
+                    + ", perishable=" + priorities[i - 1] + "):");
+            for (int r = 0; r <= i; r++) {
+                for (int c = 0; c <= W; c++) {
+                    System.out.printf("%5d ", dp[r][c]);
+                }
+                System.out.println();
+            }
+            System.out.println("--------------------------------------------------");
+        }
+
+        // Reconstruct chosen items
+        List<Integer> chosen = new ArrayList<>();
+        int w = W;
+        for (int i = n; i > 0; i--) {
+            if (dp[i][w] != dp[i - 1][w]) {
+                chosen.add(i - 1);
+                w -= weights[i - 1];
+            }
+        }
+        Collections.reverse(chosen);
+        return new Result(dp[n][W], chosen);
+    }
+
+    public static void main(String[] args) {
+        int[] weights = {10, 20, 30, 40, 15};
+        int[] values  = {60, 100, 120, 150, 80};
+        int[] priorities = {1, 0, 0, 0, 1}; // 1 = perishable
+        int W = 50;
+
+        Result result = knapsack(weights, values, W, priorities);
+
+        System.out.println("\nMax Utility Achieved: " + result.maxValue);
+        System.out.println("Items Selected:");
+        for (int idx : result.chosenItems) {
+            System.out.println("  Item " + (idx + 1)
+                    + ": Weight=" + weights[idx]
+                    + ", Value=" + values[idx]
+                    + ", Perishable=" + (priorities[idx] == 1 ? "Yes" : "No"));
+        }
+    }
+}
