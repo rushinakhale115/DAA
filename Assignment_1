@@ -1,0 +1,97 @@
+import java.util.*;
+import java.text.SimpleDateFormat;
+
+class Order {
+    String orderId;
+    long timestamp;
+
+    public Order(String orderId, long timestamp) {
+        this.orderId = orderId;
+        this.timestamp = timestamp;
+    }
+}
+
+public class OrderMergeSort {
+    static final int NUM_ORDERS = 1000000; // use 10000 for quick testing
+
+    // Generate random orders
+    static void generateSampleOrders(Order[] orders, int n) {
+        Calendar base = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        base.set(2025, Calendar.JUNE, 24, 12, 0, 0); // June 24, 2025 12:00 UTC
+        long baseTime = base.getTimeInMillis();
+
+        Random rand = new Random();
+
+        for (int i = 0; i < n; i++) {
+            int randomMinutes = rand.nextInt(100000); // up to ~70 days
+            long timestamp = baseTime + (randomMinutes * 60L * 1000L);
+            orders[i] = new Order("ORD" + (i + 1), timestamp);
+        }
+    }
+
+    // Merge Sort implementation
+    static void merge(Order[] arr, int left, int mid, int right) {
+        int n1 = mid - left + 1;
+        int n2 = right - mid;
+
+        Order[] L = new Order[n1];
+        Order[] R = new Order[n2];
+
+        for (int i = 0; i < n1; i++)
+            L[i] = arr[left + i];
+        for (int j = 0; j < n2; j++)
+            R[j] = arr[mid + 1 + j];
+
+        int i = 0, j = 0, k = left;
+
+        while (i < n1 && j < n2) {
+            if (L[i].timestamp <= R[j].timestamp)
+                arr[k++] = L[i++];
+            else
+                arr[k++] = R[j++];
+        }
+
+        while (i < n1)
+            arr[k++] = L[i++];
+        while (j < n2)
+            arr[k++] = R[j++];
+    }
+
+    static void mergeSort(Order[] arr, int left, int right) {
+        if (left < right) {
+            int mid = left + (right - left) / 2;
+            mergeSort(arr, left, mid);
+            mergeSort(arr, mid + 1, right);
+            merge(arr, left, mid, right);
+        }
+    }
+
+    // Print first n orders
+    static void printFirstNOrders(Order[] orders, int n) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        for (int i = 0; i < n; i++) {
+            String formattedTime = sdf.format(new Date(orders[i].timestamp));
+            System.out.println("Order ID: " + orders[i].orderId + ", Timestamp: " + formattedTime);
+        }
+    }
+
+    public static void main(String[] args) {
+        Order[] orders = new Order[NUM_ORDERS];
+
+        System.out.println("Generating orders...");
+        generateSampleOrders(orders, NUM_ORDERS);
+
+        System.out.println("Sorting orders by timestamp...");
+        long start = System.currentTimeMillis();
+        mergeSort(orders, 0, NUM_ORDERS - 1);
+        long end = System.currentTimeMillis();
+
+        double timeTaken = (end - start) / 1000.0;
+        System.out.printf("Done! Sorted %d orders in %.2f seconds.%n", NUM_ORDERS, timeTaken);
+
+        System.out.println("\n📦 First 5 Sorted Orders:");
+        printFirstNOrders(orders, 5);
+    }
+}
