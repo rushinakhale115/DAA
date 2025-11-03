@@ -1,0 +1,154 @@
+import java.util.*;
+
+public class TSPBranchBound {
+    static final int INF = Integer.MAX_VALUE / 2;
+
+    static class Node implements Comparable<Node> {
+        int level, costSoFar, lowerBound;
+        List<Integer> path;
+        int[][] reducedMatrix;
+
+        Node(int lvl, int cost, int lb, List<Integer> p, int[][] mat) {
+            level = lvl;
+            costSoFar = cost;
+            lowerBound = lb;
+            path = new ArrayList<>(p);
+            reducedMatrix = mat;
+        }
+
+        public int compareTo(Node o) {
+            return Integer.compare(this.lowerBound, o.lowerBound);
+        }
+    }
+
+    static int reduceMatrix(int[][] mat) {
+        int n = mat.length, reductionCost = 0;
+
+        // Row reduction
+        for (int i = 0; i < n; i++) {
+            int rowMin = INF;
+            for (int j = 0; j < n; j++) rowMin = Math.min(rowMin, mat[i][j]);
+            if (rowMin != 0 && rowMin != INF) {
+                reductionCost += rowMin;
+                for (int j = 0; j < n; j++)
+                    if (mat[i][j] != INF) mat[i][j] -= rowMin;
+            }
+        }
+
+        // Column reduction
+        for (int j = 0; j < n; j++) {
+            int colMin = INF;
+            for (int i = 0; i < n; i++) colMin = Math.min(colMin, mat[i][j]);
+            if (colMin != 0 && colMin != INF) {
+                reductionCost += colMin;
+                for (int i = 0; i < n; i++)
+                    if (mat[i][j] != INF) mat[i][j] -= colMin;
+            }
+        }
+        return reductionCost;
+    }
+
+    static Pair solveTSP(int[][] original, int start) {
+        int n = original.length;
+        int[][] rootMat = new int[n][n];
+        for (int i = 0; i < n; i++)
+            rootMat[i] = Arrays.copyOf(original[i], n);
+
+        for (int i = 0; i < n; i++) rootMat[i][i] = INF;
+
+        int initReduction = reduceMatrix(rootMat);
+        Node root = new Node(0, 0, initReduction, Arrays.asList(start), rootMat);
+        int bestCost = INF;
+        List<Integer> bestPath = new ArrayList<>();
+
+        PriorityQueue<Node> pq = new PriorityQueue<>();
+        pq.add(root);
+
+        while (!pq.isEmpty()) {
+            Node node = pq.poll();
+            if (node.lowerBound >= bestCost) continue;
+
+            if (node.level == n - 1) {
+                int last = node.path.get(node.path.size() - 1);
+                int retCost = original[last][start];
+                if (retCost != INF) {
+                    int total = node.costSoFar + retCost;
+                    if (total < bestCost) {
+                        bestCost = total;
+                        bestPath = new ArrayList<>(node.path);
+                        bestPath.add(start);
+                    }
+                }
+                continue;
+            }
+
+            int u = node.path.get(node.path.size() - 1);
+            for (int v = 0; v < n; v++) {
+                if (!node.path.contains(v) && original[u][v] != INF) {
+                    int[][] childMat = new int[n][n];
+                    for (int i = 0; i < n; i++)
+                        childMat[i] = Arrays.copyOf(node.reducedMatrix[i], n);
+
+                    for (int i = 0; i < n; i++) {
+                        childMat[u][i] = INF;
+                        childMat[i][v] = INF;
+                    }
+                    childMat[v][start] = INF;
+
+                    int reduction = reduceMatrix(childMat);
+                    int newCost = node.costSoFar + original[u][v];
+                    int newLB = newCost + reduction;
+
+                    if (newLB < bestCost) {
+                        List<Integer> newPath = new ArrayList<>(node.path);
+                        newPath.add(v);
+                        pq.add(new Node(node.level + 1, newCost, newLB, newPath, childMat));
+                    }
+                }
+            }
+        }
+        return new Pair(bestCost, bestPath);
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter number of cities (N): ");
+        int N = sc.nextInt();
+        if (N < 2) {
+            System.out.println("TSP requires at least 2 cities.");
+            return;
+        }
+
+        int[][] cost = new int[N][N];
+        System.out.println("Enter the cost matrix (" + N + "x" + N + "):");
+        System.out.println("Use '0' for same city and '9999' for no route.");
+        for (int i = 0; i < N; i++) {
+            System.out.print("City " + i + ": ");
+            for (int j = 0; j < N; j++) {
+                cost[i][j] = sc.nextInt();
+                if (i == j) cost[i][j] = INF;
+            }
+        }
+
+        int start = 0;
+        System.out.println("\nStarting TSP from city 0...");
+        Pair res = solveTSP(cost, start);
+
+        System.out.println("\nOptimal TSP Solution:");
+        if (res.cost == INF)
+            System.out.println("No feasible tour found.");
+        else {
+            System.out.println("Total Cost: " + res.cost);
+            System.out.print("Path: ");
+            for (int i = 0; i < res.path.size(); i++)
+                System.out.print(res.path.get(i) + (i < res.path.size() - 1 ? " -> " : ""));
+            System.out.println();
+        }
+    }
+
+    static class Pair {
+        int cost;
+        List<Integer> path;
+        Pair(int c, List<Integer> p) { cost = c; path = p; }
+    }
+}
