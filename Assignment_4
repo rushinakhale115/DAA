@@ -1,0 +1,88 @@
+import java.util.*;
+
+public class AmbulanceRoute {
+    
+    // Dijkstra’s Algorithm
+    static void dijkstra(int source, List<List<int[]>> graph, int[] dist) {
+        int V = graph.size();
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[source] = 0;
+
+        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));
+        pq.add(new int[]{0, source});
+
+        while (!pq.isEmpty()) {
+            int[] node = pq.poll();
+            int d = node[0];
+            int u = node[1];
+
+            if (d > dist[u]) continue;
+
+            for (int[] edge : graph.get(u)) {
+                int v = edge[0];
+                int w = edge[1];
+
+                if (dist[v] > dist[u] + w) {
+                    dist[v] = dist[u] + w;
+                    pq.add(new int[]{dist[v], v});
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter number of intersections (vertices): ");
+        int V = sc.nextInt();
+
+        System.out.print("Enter number of roads (edges): ");
+        int E = sc.nextInt();
+
+        List<List<int[]>> graph = new ArrayList<>();
+        for (int i = 0; i < V; i++) {
+            graph.add(new ArrayList<>());
+        }
+
+        System.out.println("Enter edges (u v w):");
+        for (int i = 0; i < E; i++) {
+            int u = sc.nextInt();
+            int v = sc.nextInt();
+            int w = sc.nextInt();
+            graph.get(u).add(new int[]{v, w});
+            graph.get(v).add(new int[]{u, w}); // undirected
+        }
+
+        System.out.print("Enter ambulance start location (source): ");
+        int source = sc.nextInt();
+
+        System.out.print("Enter number of hospitals: ");
+        int H = sc.nextInt();
+
+        int[] hospitals = new int[H];
+        System.out.print("Enter hospital nodes: ");
+        for (int i = 0; i < H; i++) {
+            hospitals[i] = sc.nextInt();
+        }
+
+        int[] dist = new int[V];
+        dijkstra(source, graph, dist);
+
+        int minTime = Integer.MAX_VALUE;
+        int nearestHospital = -1;
+        for (int h : hospitals) {
+            if (dist[h] < minTime) {
+                minTime = dist[h];
+                nearestHospital = h;
+            }
+        }
+
+        if (nearestHospital == -1)
+            System.out.println("No hospital reachable.");
+        else
+            System.out.println("Nearest hospital is at node " + nearestHospital +
+                    " with travel time " + minTime + " minutes.");
+
+        sc.close();
+    }
+}
