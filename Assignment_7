@@ -1,0 +1,187 @@
+import java.util.*;
+import java.io.*;
+
+class Exam {
+    String name;
+    int students;
+    Exam(String n, int s) { name = n; students = s; }
+}
+
+class Room {
+    String name;
+    int capacity;
+    Room(String n, int c) { name = n; capacity = c; }
+}
+
+public class ExamScheduler {
+
+    // Split courses like: "C1, C2, C3"
+    static List<String> splitCourses(String s) {
+        List<String> result = new ArrayList<>();
+        for (String part : s.split(",")) {
+            part = part.trim();
+            if (!part.isEmpty()) result.add(part);
+        }
+        return result;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        Map<String, String> studentEnrollmentsInput = new HashMap<>();
+        List<Room> rooms = new ArrayList<>();
+        Map<String, Integer> studentCounts = new HashMap<>();
+        Set<String> courseSet = new HashSet<>();
+
+        // ------------------ COURSE INPUT ------------------
+        System.out.print("Enter the total number of courses: ");
+        int numCourses = sc.nextInt();
+
+        System.out.println("Enter details for each course (Name Students):");
+        for (int i = 0; i < numCourses; i++) {
+            String name = sc.next();
+            int count = sc.nextInt();
+            studentCounts.put(name, count);
+            courseSet.add(name);
+        }
+
+        // ------------------ STUDENT INPUT ------------------
+        System.out.print("\nEnter the total number of students: ");
+        int numStudents = sc.nextInt();
+        sc.nextLine();
+
+        System.out.println("Enter details for each student (ID EnrolledCourses)");
+        System.out.println("Example: S1 C1, C2, C3");
+
+        for (int i = 0; i < numStudents; i++) {
+            String line = sc.nextLine().trim();
+            if (line.isEmpty()) { i--; continue; }
+
+            String[] parts = line.split(" ", 2);
+
+            String studentID = parts[0];
+            String courseList = (parts.length > 1) ? parts[1].trim() : "";
+
+            studentEnrollmentsInput.put(studentID, courseList);
+        }
+
+        // ------------------ ROOM INPUT ------------------
+        System.out.print("\nEnter the total number of rooms: ");
+        int numRooms = sc.nextInt();
+
+        System.out.println("Enter details for each room (Name Capacity):");
+        for (int i = 0; i < numRooms; i++) {
+            String name = sc.next();
+            int cap = sc.nextInt();
+            rooms.add(new Room(name, cap));
+        }
+
+        System.out.println("\n--- Input Received ---");
+        System.out.println("Building Conflict Graph...\n");
+
+        // ------------------ BUILD CONFLICT GRAPH ------------------
+        Map<String, Set<String>> adjList = new HashMap<>();
+        for (String c : courseSet) adjList.put(c, new HashSet<>());
+
+        for (var entry : studentEnrollmentsInput.entrySet()) {
+            List<String> courses = splitCourses(entry.getValue());
+
+            for (int i = 0; i < courses.size(); i++) {
+                for (int j = i + 1; j < courses.size(); j++) {
+                    adjList.get(courses.get(i)).add(courses.get(j));
+                    adjList.get(courses.get(j)).add(courses.get(i));
+                }
+            }
+        }
+
+        List<String> allCourses = new ArrayList<>(courseSet);
+        Map<String, Integer> courseColor = new HashMap<>();
+        for (String c : allCourses) courseColor.put(c, -1);
+
+        // ------------------ GRAPH COLORING ------------------
+        System.out.println("Applying Graph Coloring...");
+
+        List<Map.Entry<String, Integer>> courseDegrees = new ArrayList<>();
+        for (String c : allCourses) {
+            courseDegrees.add(Map.entry(c, adjList.get(c).size()));
+        }
+
+        // Sort by decreasing degree
+        courseDegrees.sort((a, b) -> b.getValue() - a.getValue());
+
+        List<String> sortedCourses = new ArrayList<>();
+        for (var p : courseDegrees) sortedCourses.add(p.getKey());
+
+        int numTimeSlots = 0;
+
+        for (String u : sortedCourses) {
+            Set<Integer> usedColors = new HashSet<>();
+
+            for (String v : adjList.get(u))
+                if (courseColor.get(v) != -1)
+                    usedColors.add(courseColor.get(v));
+
+            int c = 0;
+            while (usedColors.contains(c)) c++;
+
+            courseColor.put(u, c);
+            numTimeSlots = Math.max(numTimeSlots, c + 1);
+        }
+
+        // ------------------ ROOM ALLOCATION ------------------
+        System.out.println("Allocating Rooms...");
+        Map<String, String> assignedRoom = new HashMap<>();
+        Map<Integer, Set<String>> occupiedRooms = new HashMap<>();
+
+        // Sort rooms by capacity ascending
+        rooms.sort((a, b) -> a.capacity - b.capacity);
+
+        for (int t = 0; t < numTimeSlots; t++) {
+            occupiedRooms.put(t, new HashSet<>());
+
+            List<Exam> examsInSlot = new ArrayList<>();
+            for (String course : allCourses) {
+                if (courseColor.get(course) == t) {
+                    int students = studentCounts.getOrDefault(course, 0);
+                    examsInSlot.add(new Exam(course, students));
+                }
+            }
+
+            examsInSlot.sort((a, b) -> b.students - a.students);
+
+            for (Exam e : examsInSlot) {
+                boolean assigned = false;
+
+                for (Room r : rooms) {
+                    if (r.capacity >= e.students &&
+                        !occupiedRooms.get(t).contains(r.name)) {
+
+                        assignedRoom.put(e.name, r.name);
+                        occupiedRooms.get(t).add(r.name);
+                        assigned = true;
+                        break;
+                    }
+                }
+
+                if (!assigned)
+                    assignedRoom.put(e.name, "UNASSIGNED");
+            }
+        }
+
+        // ------------------ FINAL OUTPUT ------------------
+        System.out.println("\nFinal Timetable:\n");
+        System.out.printf("%-10s %-12s %-10s\n", "Course", "Time Slot", "Room");
+        System.out.println("--------------------------------");
+
+        Collections.sort(allCourses);
+
+        for (String c : allCourses) {
+            System.out.printf("%-10s %-12s %-10s\n",
+                    c,
+                    "Slot " + (courseColor.get(c) + 1),
+                    assignedRoom.get(c));
+        }
+
+        sc.close();
+    }
+}
