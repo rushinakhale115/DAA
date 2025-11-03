@@ -1,0 +1,98 @@
+import java.util.*;
+import java.time.*;
+
+class Movie {
+    String title;
+    float rating;
+    int releaseYear;
+    int popularity;
+
+    public Movie(String title, float rating, int releaseYear, int popularity) {
+        this.title = title;
+        this.rating = rating;
+        this.releaseYear = releaseYear;
+        this.popularity = popularity;
+    }
+
+    void display() {
+        System.out.println(title + " | Rating: " + rating +
+                " | Year: " + releaseYear +
+                " | Popularity: " + popularity);
+    }
+}
+
+public class MovieSorter {
+
+    // QuickSort implementation
+    static void quickSort(List<Movie> movies, int low, int high, Comparator<Movie> comparator) {
+        if (low < high) {
+            int pivotIndex = partition(movies, low, high, comparator);
+            quickSort(movies, low, pivotIndex - 1, comparator);
+            quickSort(movies, pivotIndex + 1, high, comparator);
+        }
+    }
+
+    static int partition(List<Movie> movies, int low, int high, Comparator<Movie> comparator) {
+        Movie pivot = movies.get(high);
+        int i = low;
+        for (int j = low; j < high; j++) {
+            if (comparator.compare(movies.get(j), pivot) < 0) {
+                Collections.swap(movies, i, j);
+                i++;
+            }
+        }
+        Collections.swap(movies, i, high);
+        return i;
+    }
+
+    // Generate random movies
+    static List<Movie> generateMovies(int n) {
+        List<Movie> movies = new ArrayList<>();
+        Random rand = new Random();
+        for (int i = 0; i < n; i++) {
+            String title = "Movie " + (i + 1);
+            float rating = (rand.nextInt(90) + 10) / 10.0f; // 1.0 to 10.0
+            int releaseYear = rand.nextInt(45) + 1980; // 1980 to 2024
+            int popularity = rand.nextInt(1000000) + 1000; // 1,000 to 1,000,000
+            movies.add(new Movie(title, rating, releaseYear, popularity));
+        }
+        return movies;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int numMovies = 100000;
+        List<Movie> movies = generateMovies(numMovies);
+
+        System.out.print("Sort movies by (rating/year/popularity): ");
+        String sortBy = sc.next();
+
+        Comparator<Movie> comparator;
+        switch (sortBy.toLowerCase()) {
+            case "year":
+                comparator = Comparator.comparingInt(m -> m.releaseYear);
+                break;
+            case "popularity":
+                comparator = Comparator.comparingInt(m -> m.popularity);
+                break;
+            case "rating":
+            default:
+                comparator = Comparator.comparingDouble(m -> m.rating);
+                break;
+        }
+
+        System.out.println("\nSorting movies by " + sortBy + "...");
+        long start = System.nanoTime();
+        quickSort(movies, 0, movies.size() - 1, comparator);
+        long end = System.nanoTime();
+
+        double timeTaken = (end - start) / 1e9;
+
+        System.out.println("\nTop 10 movies by " + sortBy + ":");
+        for (int i = numMovies - 1; i >= numMovies - 10; i--) {
+            movies.get(i).display();
+        }
+
+        System.out.printf("\nSorted %d movies in %.3f seconds.%n", numMovies, timeTaken);
+    }
+}
